@@ -1,12 +1,18 @@
 import nats, { Message } from 'node-nats-streaming';
-
+import { randomBytes } from 'crypto';
 console.clear();
-const stan = nats.connect('nats-test', '123');
+
+const stan = nats.connect('nats-test', randomBytes(4).toString('hex'));
 
 stan.on('connect', () => {
   console.log('Listener connected to NATS');
 
-  const subscription = stan.subscribe('ticket:created');
+  const options = stan.subscriptionOptions().setManualAckMode(true);
+  const subscription = stan.subscribe(
+    'ticket:created',
+    'listener-queue-group',
+    options
+  );
 
   subscription.on('message', (msg: Message) => {
     console.log('Message received!');
@@ -16,5 +22,7 @@ stan.on('connect', () => {
     if (typeof data === 'string') {
       console.log(`Received event #${msg.getSequence()}, with data: ${data}`);
     }
+
+    msg.ack();
   });
 });
